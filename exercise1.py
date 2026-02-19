@@ -1,0 +1,20 @@
+import pandas as pd
+
+df = pd.read_csv('insurance.csv')
+print(df.head())
+print(df.describe())
+print(df.info())
+print(df.tail())
+print(df.columns)
+print(df.shape)
+print(df['age'].unique())
+print(df['smoker'].value_counts())
+print(df.groupby('region')['expenses'].mean())
+print(df.isnull().sum())
+# print(df.corr())
+print(df.sort_values(by='expenses', ascending=False).head())
+print(df[df['bmi'] > 30].head())
+print(df[df['smoker'] == 'yes'])
+print(df[['age', 'bmi', 'expenses']])
+
+print(df.iloc[3])

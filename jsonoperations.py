@@ -17,3 +17,4 @@ print(data)
 
 print(data['name'])
 f.close()
+print(data.values())
