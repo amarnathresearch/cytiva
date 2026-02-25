@@ -55,12 +55,26 @@ def handle_sparsity(df):
     print("STEP 2: HANDLE SPARSITY - FILL WITH GLOBAL MEAN")
     print("=" * 70)
     
-    # Calculate global mean of rated items only
-    global_mean = df[df > 0].values.mean()
+    # Convert to float to avoid type issues
+    df_numeric = df.astype(float)
+    
+    # Replace any existing NaN with 0
+    df_numeric = df_numeric.fillna(0)
+    
+    # Calculate global mean of non-zero rated items only
+    global_mean = df_numeric[df_numeric > 0].values.mean()
     
     # Create a copy and fill zeros with global mean
-    df_filled = df.copy()
+    df_filled = df_numeric.copy()
     df_filled[df_filled == 0] = global_mean
+    
+    # Ensure no NaN values remain (double-check)
+    df_filled = df_filled.fillna(global_mean)
+    
+    # Verify no NaN values
+    if df_filled.isna().any().any():
+        print("Warning: NaN values still present, filling with mean")
+        df_filled = df_filled.fillna(global_mean)
     
     print(f"\nGlobal mean of ratings: {global_mean:.4f}")
     print(f"\nFilled Rating Matrix:")
@@ -75,9 +89,19 @@ def apply_svd(df_filled, n_components=3):
     print(f"STEP 3: APPLY SVD DECOMPOSITION (n_components={n_components})")
     print("=" * 70)
     
+    # Verify no NaN values before SVD
+    if df_filled.isna().any().any():
+        print("Warning: NaN values detected, removing them")
+        df_filled = df_filled.fillna(df_filled.mean().mean())
+    
     # Transpose to get (users, movies) matrix
     # SVD will decompose R = U * Σ * V^T
     R = df_filled.T.values  # (8 users, 8 movies)
+    
+    # Verify no NaN in the matrix
+    if np.isnan(R).any():
+        print("Error: NaN values in matrix R")
+        R = np.nan_to_num(R, nan=0.0)
     
     # Apply Truncated SVD
     svd = TruncatedSVD(n_components=n_components, random_state=42)
@@ -315,16 +339,7 @@ def calculate_reconstruction_error(original_df, R_reconstructed):
     print("STEP 9: CALCULATE RECONSTRUCTION ERROR")
     print("=" * 70)
     
-    original_rated = original_df[original_df > 0].values
-    
-    # Get corresponding reconstructed values
-    reconstructed_rated = []
-    for i, movie_idx in enumerate(np.where(original_df.values > 0)[0]):
-        user_idx = np.where(original_df.values[movie_idx] > 0)[1]
-        for u_idx in user_idx:
-            reconstructed_rated.append(R_reconstructed[u_idx, movie_idx])
-    
-    # Calculate RMSE on rated items
+    # Calculate RMSE only on originally rated items (where original_df > 0)
     user_indices, movie_indices = np.where(original_df.values > 0)
     original_rated_values = original_df.values[user_indices, movie_indices]
     reconstructed_values = R_reconstructed[user_indices, movie_indices]
